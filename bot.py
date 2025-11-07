@@ -373,6 +373,57 @@ class SuperIntent:
                     f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+    
+    async def checkin_status(self, address: str, proxy_url=None, retries=5):
+        url = f"{self.BASE_API}/check-in/status"
+        headers = {
+            **self.HEADERS[address],
+            "Cookie": self.cookie_headers[address]
+        }
+        for attempt in range(retries):
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            try:
+                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
+                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries - 1:
+                    await asyncio.sleep(5)
+                    continue
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Check-In  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Fetch Status Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
+
+        return None
+    
+    async def claim_checkin(self, address: str, proxy_url=None, retries=5):
+        url = f"{self.BASE_API}/check-in"
+        headers = {
+            **self.HEADERS[address],
+            "Content-Length": "0",
+            "Cookie": self.cookie_headers[address]
+        }
+        for attempt in range(retries):
+            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            try:
+                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
+                    async with session.post(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries - 1:
+                    await asyncio.sleep(5)
+                    continue
+                self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Check-In  :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Not Claimed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
 
         return None
     
@@ -538,6 +589,29 @@ class SuperIntent:
                     f"{Fore.CYAN + Style.BRIGHT}Points    :{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {points} PTS {Style.RESET_ALL}"
                 )
+
+            checkin = await self.checkin_status(address, proxy)
+            if checkin:
+                has_checkin = checkin.get("hasCheckedInToday", False)
+
+                if not has_checkin:
+                    claim = await self.claim_checkin(address, proxy)
+                    if claim:
+                        reward = claim.get("pointsGranted")
+
+                        self.log(
+                            f"{Fore.CYAN + Style.BRIGHT}Check-In  :{Style.RESET_ALL}"
+                            f"{Fore.GREEN + Style.BRIGHT} Claimed Successfully {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT}-{Style.RESET_ALL}"
+                            f"{Fore.CYAN + Style.BRIGHT} Reward: {Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT}{reward} PTS{Style.RESET_ALL}"
+                        )
+
+                else:
+                    self.log(
+                        f"{Fore.CYAN + Style.BRIGHT}Check-In  :{Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Already Claimed {Style.RESET_ALL}"
+                    )
 
             quest_lists = await self.quest_lists(address, proxy)
             if quest_lists:

@@ -32,6 +32,7 @@ Superintent BOT is an automated tool designed to quest completion across multipl
 - 🔄 **Automated Account Management** - Retrieve account information automatically
 - 🌐 **Flexible Proxy Support** - Run with or without proxy configuration
 - 🔀 **Smart Proxy Rotation** - Automatic rotation of invalid proxies
+- ⏰ **Daily Check-In** - Automated perform daily check-in
 - 📜 **Quest Completion** - Automated complete available quests
 - 👥 **Multi-Account Support** - Manage multiple accounts simultaneously
 
