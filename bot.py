@@ -1,10 +1,4 @@
-from aiohttp import (
-    ClientResponseError,
-    ClientSession,
-    ClientTimeout,
-    BasicAuth
-)
-from aiohttp_socks import ProxyConnector
+from curl_cffi import requests
 from fake_useragent import FakeUserAgent
 from http.cookies import SimpleCookie
 from eth_account import Account
@@ -199,21 +193,20 @@ class SuperIntent:
     async def auth_nonce(self, address: str, proxy_url=None, retries=5):
         url = f"{self.BASE_API}/auth/nonce"
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=self.HEADERS[address], proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        result = await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=self.HEADERS[address], proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                result = response.json()
 
-                        raw_cookies = response.headers.getall('Set-Cookie', [])
-                        if raw_cookies:
-                            cookie = SimpleCookie()
-                            cookie.load("\n".join(raw_cookies))
-                            cookie_string = "; ".join([f"{key}={morsel.value}" for key, morsel in cookie.items()])
-                            self.cookie_headers[address] = cookie_string
+                raw_cookies = response.headers.get_list('Set-Cookie')
+                if raw_cookies:
+                    cookie = SimpleCookie()
+                    cookie.load("\n".join(raw_cookies))
+                    cookie_string = "; ".join([f"{key}={morsel.value}" for key, morsel in cookie.items()])
+                    self.cookie_headers[address] = cookie_string
 
-                            return result
+                    return result
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -237,20 +230,19 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
+                response = await asyncio.to_thread(requests.post, url=url, headers=headers, data=data, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
 
-                        raw_cookies = response.headers.getall('Set-Cookie', [])
-                        if raw_cookies:
-                            cookie = SimpleCookie()
-                            cookie.load("\n".join(raw_cookies))
-                            cookie_string = "; ".join([f"{key}={morsel.value}" for key, morsel in cookie.items()])
-                            self.cookie_headers[address] = cookie_string
+                raw_cookies = response.headers.get_list('Set-Cookie')
+                if raw_cookies:
+                    cookie = SimpleCookie()
+                    cookie.load("\n".join(raw_cookies))
+                    cookie_string = "; ".join([f"{key}={morsel.value}" for key, morsel in cookie.items()])
+                    self.cookie_headers[address] = cookie_string
 
-                            return True
+                    return True
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -274,13 +266,12 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        if response.status == 400: return None
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.post, url=url, headers=headers, data=data, proxies=proxies, timeout=120, impersonate="chrome120")
+                if response.status_code == 400: return None
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -301,12 +292,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -330,13 +320,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        self.log(await response.text())
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.post, url=url, headers=headers, data=data, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -357,12 +345,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -381,12 +368,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -408,12 +394,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.post, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -434,12 +419,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -460,12 +444,11 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.get, url=url, headers=headers, proxies=proxies, timeout=120, impersonate="chrome120")
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
@@ -489,19 +472,18 @@ class SuperIntent:
             "Cookie": self.cookie_headers[address]
         }
         for attempt in range(retries):
-            connector, proxy, proxy_auth = self.build_proxy_config(proxy_url)
+            proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
             try:
-                async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data, proxy=proxy, proxy_auth=proxy_auth) as response:
-                        if response.status in [400, 429]:
-                            self.log(
-                                f"{Fore.CYAN+Style.BRIGHT}   > {Style.RESET_ALL}"
-                                f"{Fore.WHITE+Style.BRIGHT}{quest_name}{Style.RESET_ALL}"
-                                f"{Fore.RED+Style.BRIGHT} Not Completed {Style.RESET_ALL}"
-                            )
-                            return None
-                        response.raise_for_status()
-                        return await response.json()
+                response = await asyncio.to_thread(requests.post, url=url, headers=headers, data=data, proxies=proxies, timeout=120, impersonate="chrome120")
+                if response.status_code in [400, 429]:
+                    self.log(
+                        f"{Fore.CYAN+Style.BRIGHT}   > {Style.RESET_ALL}"
+                        f"{Fore.WHITE+Style.BRIGHT}{quest_name}{Style.RESET_ALL}"
+                        f"{Fore.RED+Style.BRIGHT} Not Completed {Style.RESET_ALL}"
+                    )
+                    return None
+                response.raise_for_status()
+                return response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
